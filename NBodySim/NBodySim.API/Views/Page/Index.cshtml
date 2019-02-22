@@ -1,0 +1,171 @@
+﻿
+@{
+    ViewData["Title"] = "Index";
+}
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+
+<script>
+    $(window).on('load', function () {
+        var c = document.getElementById('sim-canvas');
+        var ctx = c.getContext('2d');
+        var w = 1000;
+        var h = 700;
+        ctx.canvas.width = w;
+        ctx.canvas.height = h;
+        setInterval(
+            function () {
+                $.get("http://localhost:61660/api/next2", function (data) {
+                    if (!$("#trails-in").is(":checked"))
+                        ctx.clearRect(0, 0, c.width, c.height);
+                    var x = JSON.parse(data);
+                    let minx = minX(x);
+                    let maxx = maxX(x);
+                    let miny = minY(x);
+                    let maxy = maxY(x);
+                    let minmass = minMass(x);
+                    let maxmass = maxMass(x);
+                    let mins = minSpeed(x);
+                    let maxs = maxSpeed(x);
+
+                    $("#stat").html("minX: " + minx
+                        + "</br>maxX: " + maxx
+                        + "</br>minY: " + miny
+                        + "</br>maxY: " + maxy
+                        + "</br>minMass: " + minmass
+                        + "</br>maxMass: " + maxmass
+                        + "</br>minSpeed: " + mins
+                        + "</br>maxSpeed: " + maxs);
+                    for (let i = 0; i < x.length; i++) {
+                        let x_c = linearProjection(minx, maxx, 0, w, x[i].Position.X);
+                        let y_c = linearProjection(miny, maxy, 0, h, x[i].Position.Y);
+                        ctx.beginPath();
+                        ctx.fillStyle = "#FF00" + parseInt(linearProjection(minmass, maxmass, 0, 255, x[i].Mass)).toString(16);
+                        ctx.arc(x_c, y_c, 2, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                });
+            }
+            , 30);
+        $("#reset").on("click", function () {
+            $.post("http://localhost:61660/api/reset2", function (data) { });
+        });
+    });
+
+    function minX(arr) {
+        let m = arr[0].Position.X;
+        for (let i = 1; i < arr.length; i++) {
+            if (m > arr[i].Position.X)
+                m = arr[i].Position.X;
+        }
+        return m;
+    }
+
+    function maxX(arr) {
+        let m = arr[0].Position.X;
+        for (let i = 1; i < arr.length; i++) {
+            if (m < arr[i].Position.X)
+                m = arr[i].Position.X;
+        }
+        return m;
+    }
+
+    function minY(arr) {
+        let m = arr[0].Position.Y;
+        for (let i = 1; i < arr.length; i++) {
+            if (m > arr[i].Position.Y)
+                m = arr[i].Position.Y;
+        }
+        return m;
+    }
+
+    function maxY(arr) {
+        let m = arr[0].Position.Y;
+        for (let i = 1; i < arr.length; i++) {
+            if (m < arr[i].Position.Y)
+                m = arr[i].Position.Y;
+        }
+        return m;
+    }
+
+    function minMass(arr) {
+        let m = arr[0].Mass;
+        for (let i = 1; i < arr.length; i++) {
+            if (m > arr[i].Mass)
+                m = arr[i].Mass;
+        }
+        return m;
+    }
+
+    function maxMass(arr) {
+        let m = arr[0].Mass;
+        for (let i = 1; i < arr.length; i++) {
+            if (m < arr[i].Mass)
+                m = arr[i].Mass;
+        }
+        return m;
+    }
+
+    function minSpeed(arr) {
+        let m = Math.sqrt(arr[0].Speed.X * arr[0].Speed.X + arr[0].Speed.Y * arr[0].Speed.Y);
+        for (let i = 1; i < arr.length; i++) {
+            if (m > Math.sqrt(arr[i].Speed.X * arr[i].Speed.X + arr[i].Speed.Y * arr[i].Speed.Y))
+                m = Math.sqrt(arr[i].Speed.X * arr[i].Speed.X + arr[i].Speed.Y * arr[i].Speed.Y);
+        }
+        return m;
+    }
+
+    function maxSpeed(arr) {
+         let m = Math.sqrt(arr[0].Speed.X * arr[0].Speed.X + arr[0].Speed.Y * arr[0].Speed.Y);
+        for (let i = 1; i < arr.length; i++) {
+            if (m < Math.sqrt(arr[i].Speed.X * arr[i].Speed.X + arr[i].Speed.Y * arr[i].Speed.Y))
+                m = Math.sqrt(arr[i].Speed.X * arr[i].Speed.X + arr[i].Speed.Y * arr[i].Speed.Y);
+        }
+        return m;
+    }
+
+    function linearProjection(sourceIntervalMinimum, sourceIntervalMaximum, destinationIntervalMinimum, destinationIntervalMaximum, value) {
+        return (value * (destinationIntervalMinimum - destinationIntervalMaximum) + (sourceIntervalMinimum * destinationIntervalMaximum) - (destinationIntervalMinimum * sourceIntervalMaximum)) / (sourceIntervalMinimum - sourceIntervalMaximum);
+    }
+
+    function drawArrow(fromx, fromy, tox, toy){
+                //variables to be used when creating the arrow
+                var c = document.getElementById("sim-canvas");
+                var ctx = c.getContext("2d");
+                var headlen = 10;
+
+                var angle = Math.atan2(toy-fromy,tox-fromx);
+
+                //starting path of the arrow from the start square to the end square and drawing the stroke
+                ctx.beginPath();
+                ctx.moveTo(fromx, fromy);
+                ctx.lineTo(tox, toy);
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                //starting a new path from the head of the arrow to one of the sides of the point
+                ctx.beginPath();
+                ctx.moveTo(tox, toy);
+                ctx.lineTo(tox-headlen*Math.cos(angle-Math.PI/7),toy-headlen*Math.sin(angle-Math.PI/7));
+
+                //path from the side point of the arrow, to the other side point
+                ctx.lineTo(tox-headlen*Math.cos(angle+Math.PI/7),toy-headlen*Math.sin(angle+Math.PI/7));
+
+                //path from the side point back to the tip of the arrow, and then again to the opposite side point
+                ctx.lineTo(tox, toy);
+                ctx.lineTo(tox-headlen*Math.cos(angle-Math.PI/7),toy-headlen*Math.sin(angle-Math.PI/7));
+
+                //draws the paths created above
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = "#000000";
+                ctx.fill();
+            }
+</script>
+
+<canvas id="sim-canvas"></canvas>
+<p id="stat"></p>
+<button id="reset">Reset</button>
+<input id="trails-in" type="checkbox" style="display:inline-block" value="Trails" />
+<p style="display:inline-block">Trails</p>
